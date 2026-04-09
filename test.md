@@ -300,28 +300,32 @@ The sequence below shows how WAP enforces the CST RBAC roles for server-side sim
 ```mermaid
 sequenceDiagram
     autonumber
-    actor SE as Systems Engineer
-    participant CSM as CSM Client (Windows 10/11)
-    participant WAP as Web Application Platform (Windows Server 2025)
-    participant CST_S as CST Server Service (JVM)
-    participant LIC as FlexNet Licence Server
-    participant AD as Active Directory
-    SE->>CSM: Select model; choose "Run Simulation (server-side)"
-    CSM->>WAP: HTTPS POST /simulate (TLS 1.2+, Kerberos token)
-    WAP->>AD: Validate Kerberos token; check group membership
+
+    actor SE as "Systems Engineer"
+    participant CSM as "CSM Client (Windows 10/11)"
+    participant WAP as "Web Application Platform (Windows Server 2025)"
+    participant CST_S as "CST Server Service (JVM)"
+    participant LIC as "FlexNet Licence Server"
+    participant AD as "Active Directory"
+
+    SE ->> CSM: Select model and choose Run Simulation (server-side)
+    CSM ->> WAP: HTTPS POST /simulate (TLS 1.2+, Kerberos token)
+    WAP ->> AD: Validate Kerberos token and check group membership
+
     alt Auth fails or insufficient role
-        AD-->>WAP: Denied
-        WAP-->>CSM: 403 Forbidden
+        AD -->> WAP: Access denied
+        WAP -->> CSM: 403 Forbidden
     end
-    AD-->>WAP: Auth OK; roles confirmed
-    WAP->>CST_S: Route simulation request
-    CST_S->>LIC: Request server-side licence checkout
-    LIC-->>CST_S: Licence granted
-    CST_S->>CST_S: Execute simulation
-    CST_S->>LIC: Return licence
-    CST_S-->>WAP: Return result reference
-    WAP-->>CSM: HTTPS 200 + result reference
-    CSM-->>SE: Display simulation results
+
+    AD -->> WAP: Auth OK, roles confirmed
+    WAP ->> CST_S: Route simulation request
+    CST_S ->> LIC: Request server-side licence checkout
+    LIC -->> CST_S: Licence granted
+    CST_S ->> CST_S: Execute simulation
+    CST_S ->> LIC: Return licence
+    CST_S -->> WAP: Return result reference
+    WAP -->> CSM: HTTPS 200 with result reference
+    CSM -->> SE: Display simulation results
 ```
 
 ---
