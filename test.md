@@ -1,492 +1,523 @@
-# Phoenix CAMEO — RBAC Reference
+# Phoenix CAMEO — RACI Matrix
 
 > **Programme:** Phoenix CAMEO MBSE
-> **Document Type:** RBAC Reference — Unified System View
-> **Generated:** 2026-04-09
+> **Document Type:** RACI Matrix
+> **Classification:** OFFICIAL — SENSITIVE
+> **Generated:** 2026-04-08
+> **Author:** Iain Reid
 > **Components Covered:** WAP · TWC · FlexNet · CST · CSM
-> **Classification:** OFFICIAL — SENSITIVE | **Author:** Iain Reid
+---
+
+**RACI Key:** R = Responsible | A = Accountable | C = Consulted | I = Informed
+
 ---
 
 ## Contents
 
-- [1. System Overview](#1-system-overview)
-- [2. WAP — Web Application Platform](#2-wap--web-application-platform)
-- [3. TWC — Teamwork Cloud](#3-twc--teamwork-cloud)
-- [4. FlexNet — License Server](#4-flexnet--license-server)
-- [5. CST — Cameo Simulation Toolkit](#5-cst--cameo-simulation-toolkit)
-- [6. CSM — Cameo Systems Modeler](#6-csm--cameo-systems-modeler)
-- [7. Cross-Component RBAC Summary](#7-cross-component-rbac-summary)
+1. [System Overview](#1-system-overview)
+2. [WAP — Web Application Platform](#2-wap--web-application-platform)
+   - [2.1 Stakeholders](#21-stakeholders)
+   - [2.2 Accountability Map](#22-accountability-map)
+   - [2.3 RACI Matrix](#23-raci-matrix)
+   - [2.4 Incident Severity](#24-incident-severity)
+3. [TWC — Teamwork Cloud](#3-twc--teamwork-cloud)
+   - [3.1 Personas](#31-personas)
+   - [3.2 Accountability Map](#32-accountability-map)
+   - [3.3 RACI Table](#33-raci-table)
+4. [FlexNet — License Server](#4-flexnet--license-server)
+   - [4.1 Roles](#41-roles)
+   - [4.2 Accountability Map](#42-accountability-map)
+   - [4.3 RACI Table — Operations](#43-raci-table--operations)
+   - [4.4 RACI Table — Licence Management](#44-raci-table--licence-management)
+   - [4.5 RACI Table — Recovery](#45-raci-table--recovery)
+5. [CST — Cameo Simulation Toolkit](#5-cst--cameo-simulation-toolkit)
+   - [5.1 Persona Key](#51-persona-key)
+   - [5.2 Accountability Map](#52-accountability-map)
+   - [5.3 RACI Table — Simulation Operations](#53-raci-table--simulation-operations)
+   - [5.4 RACI Table — Incident Response](#54-raci-table--incident-response)
+   - [5.5 SLA Targets](#55-sla-targets)
+6. [CSM — Cameo Systems Modeler](#6-csm--cameo-systems-modeler)
+   - [6.1 Roles](#61-roles)
+   - [6.2 Accountability Map](#62-accountability-map)
+   - [6.3 RACI Table](#63-raci-table)
 
 ---
 
 ## 1. System Overview
 
-The Phoenix CAMEO MBSE toolchain enforces role-based access control (RBAC) at every tier. All identities are managed through Active Directory (AD); roles are assigned via AD group membership and enforced at the application layer of each component. There are no local application accounts. All privileged actions are logged to a SIEM.
-
-### System Context
-
-The diagram below shows the users, administrators, and external systems that interact with the platform. Roles defined in the sections that follow are mapped to the `Internal User` and `Platform Administrator` personas shown here.
+The Phoenix CAMEO deployment is a five-component MBSE toolchain. The diagram below shows the primary accountable owner for each component and the key cross-component support flows.
 
 ```mermaid
-C4Context
-    title System Context — WAP VM
-    Person(user, "Internal User", "Systems engineer or MBSE reviewer accessing models via browser")
-    Person(admin, "Platform Administrator", "Manages WAP services, certificates, and configuration")
-    System_Boundary(wap_vm, "WAP VM (Stateless Service Tier)") {
-        System(wap, "Web Application Platform", "Hosts Cameo Collaborator, Document Exporter, Resources App, CST Simulation Services")
-    }
-    System_Ext(twc, "TWC VM", "Teamwork Cloud — stateful model repository (Cassandra / Zookeeper)")
-    System_Ext(ad, "Active Directory", "Enterprise identity and group management")
-    System_Ext(pki, "Internal PKI / CA", "Issues and manages TLS certificates")
-    System_Ext(license, "License Server VM", "FlexNet / DSLS — floating license enforcement")
-    System_Ext(dns, "Enterprise DNS", "Name resolution for all VMs")
-    System_Ext(ntp, "Enterprise NTP", "Time synchronisation")
-    Rel(user, wap, "HTTPS (443)", "TLS 1.2+")
-    Rel(admin, wap, "HTTPS Admin (8443)", "TLS 1.2+")
-    Rel(wap, twc, "TWC REST API (8111 / 8443)", "Internal mTLS")
-    Rel(wap, ad, "LDAPS (636)", "User authentication and group lookup")
-    Rel(wap, pki, "OCSP / CRL", "Certificate validation")
-    Rel(wap, license, "FlexNet (27000) / DSLS (4085)", "License checkout")
-    Rel(wap, dns, "DNS (53)", "Name resolution")
-    Rel(wap, ntp, "NTP (123/UDP)", "Time sync")
+graph TD
+    subgraph LEGEND["RACI Key"]
+        L1["R = Responsible"]
+        L2["A = Accountable"]
+        L3["C = Consulted"]
+        L4["I = Informed"]
+    end
+    subgraph COMPONENTS["Phoenix CAMEO — Components & Accountable Owners"]
+        WAP["WAP\nWeb Application Platform\nAccountable: Application Owner (AO)"]
+        TWC["TWC\nTeamwork Cloud\nAccountable: Enterprise & Solution Architects (EA)"]
+        FLX["FlexNet\nLicense Server\nAccountable: FlexNet Administrator (FNA)"]
+        CST["CST\nCameo Simulation Toolkit\nAccountable: Platform Operations (PO)"]
+        CSM["CSM\nCameo Systems Modeler\nAccountable: VDI Platform Engineer (VDI)"]
+    end
+    subgraph SHARED["Shared Support Roles"]
+        SEC["Security Team / ISSO\nSecurity & Compliance"]
+        PA["Platform / Programme Architect\nArchitecture Governance"]
+        SD["Service Desk\nL1/L2 Support"]
+    end
+    WAP -- "LDAPS / AD Auth" --> TWC
+    WAP -- "License Checkout" --> FLX
+    CSM -- "Server-side simulation" --> CST
+    CSM -- "TWC REST API" --> TWC
+    CSM -- "License Checkout" --> FLX
+    CST -- "License Checkout" --> FLX
+    SEC -. "Security reviews & compliance" .-> WAP
+    SEC -. "Security reviews & compliance" .-> TWC
+    SEC -. "Audit & SIEM" .-> FLX
+    PA -. "Architecture governance" .-> WAP
+    PA -. "Architecture governance" .-> TWC
+    SD -. "L1/L2 incident triage" .-> WAP
+    SD -. "L1/L2 incident triage" .-> CSM
 ```
+
+| Component | Primary Accountable Role | Key Responsible Role | Security Oversight |
+|-----------|--------------------------|----------------------|--------------------|
+| WAP | Application Owner (AO) | Platform Administrator (PA) | Security Team (SEC) |
+| TWC | Enterprise & Solution Architects (EA) | MBSE Tool Administrator (TA) | Cybersecurity Operations (CO) |
+| FlexNet | FlexNet Administrator (FNA) | FlexNet Administrator (FNA) | ISSO |
+| CST | Platform Operations (PO) | MBSE Tool Administrator (TA) | Platform Operations (PO) |
+| CSM | VDI Platform Engineer (VDI) | VDI Platform Engineer (VDI) | Cybersecurity Compliance Officer (CCO) |
 
 ---
 
 ## 2. WAP — Web Application Platform
 
-> **Source:** `wap/docs/08_rbac_definition.md` | **Status:** Draft 0.2 | **Doc Ref:** WAP-DOC-08
-### Role Definitions (WAP)
+> **Source:** `wap/docs/09_raci_matrix.md` | **Status:** Draft 0.2 | **Doc Ref:** WAP-DOC-09
+### 2.1 Stakeholders
 
-| Role ID | Role Name | Description | AD Group (TBC) | Privilege Level |
-|---|---|---|---|---|
-| WAP-R01 | Platform Administrator | Full administrative access to WAP configuration, services, and audit logs | `SG-WAP-Admins` | Highest |
-| WAP-R02 | Collaborator User | Read/write access to Cameo Collaborator — view, comment, annotate models | `SG-WAP-CollabUsers` | Standard |
-| WAP-R03 | Collaborator Viewer | Read-only access to Cameo Collaborator | `SG-WAP-CollabViewers` | Read-only |
-| WAP-R04 | Document Export User | Collaborator Viewer access + submit document export jobs | `SG-WAP-DocExport` | Functional |
-| WAP-R05 | Simulation User | Collaborator Viewer access + submit and monitor CST simulation jobs | `SG-WAP-SimUsers` | Functional |
-| WAP-R06 | API Consumer | Programmatic service account access to WAP REST API | `SG-WAP-API` | Service |
-
----
-
-### Access Control Matrix (WAP)
-
-✅ = Permitted | ❌ = Denied | 🔍 = Permitted with audit log entry
-
-| Capability | R01 Admin | R02 Collab User | R03 Viewer | R04 Doc Export | R05 Sim User | R06 API |
-|---|---|---|---|---|---|---|
-| Login to web interface | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
-| API token authentication | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
-| List accessible projects | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Browse model elements and diagrams | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Add comments / annotations | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Submit document export job | ✅ 🔍 | ✅ | ❌ | ✅ 🔍 | ❌ | ✅ 🔍 |
-| Download own export result | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ |
-| View all users' export jobs | ✅ 🔍 | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Submit simulation job | ✅ 🔍 | ❌ | ❌ | ❌ | ✅ 🔍 | ✅ 🔍 |
-| View own simulation job status | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Cancel any simulation job | ✅ 🔍 | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Access admin console | ✅ 🔍 | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Manage service configuration | ✅ 🔍 | ❌ | ❌ | ❌ | ❌ | ❌ |
-| View audit logs | ✅ 🔍 | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Role | Description |
+|---|---|
+| Platform Administrator (PA) | Technical operator of WAP VM |
+| Application Owner (AO) | Business / functional owner of WAP capability |
+| Security Team (SEC) | Information security and compliance |
+| Network / Infrastructure (NET) | Networking, VMware, firewall |
+| Active Directory Admin (ADA) | AD group management and service accounts |
+| DXC Service Desk (SD) | Level 1/2 support and request handling |
+| End Users (EU) | Systems engineers and reviewers |
+| Vendor Support (VS) | No Magic / Dassault Systèmes support |
+| Enterprise PKI Team (PKI) | Internal CA certificate issuance |
 
 ---
 
-### Service Account Definitions (WAP)
-
-| Account ID | Account Name | Purpose | Permissions | Rotation |
-|---|---|---|---|---|
-| WAP-SA-01 | `svc-wap-twc` | WAP → TWC REST API integration | Read access to all TWC projects | Quarterly |
-| WAP-SA-02 | `svc-wap-bind` | LDAP bind account for AD authentication | Read-only AD bind — no write | Quarterly |
-
----
-
-### Trust Boundaries & RBAC Enforcement (WAP)
-
-The diagram below shows where RBAC / AuthZ enforcement sits within the WAP processing pipeline. All inbound requests from the internal user network pass through TLS termination before reaching the WAP Application Layer. The RBAC/AuthZ Enforcement node validates the caller's role (resolved from AD group membership) before any capability is exercised. All admin and user actions are forwarded to the Audit Logger.
+### 2.2 Accountability Map
 
 ```mermaid
 graph LR
-    subgraph Untrusted["Zone: Internal User Network (Untrusted Input)"]
-        USER[Internal User Browser]
+    AO["Application Owner (AO)\n— Accountable across all activities —"]
+    subgraph OPS["Operations"]
+        PA["Platform Administrator (PA)\nResponsible: service, monitoring,\nlogs, patching, incidents"]
     end
-    subgraph WAP_BOUNDARY["Zone: WAP VM — TLS Boundary"]
-        RP[TLS Termination / Reverse Proxy]
-        WAP[WAP Application Layer]
-        AUTHZ[RBAC / AuthZ Enforcement]
-        AUDIT[Audit Logger]
+    subgraph ACCESS["Access Management"]
+        ADA["AD Admin (ADA)\nResponsible: user access,\naccount provisioning/removal"]
+        SD["Service Desk (SD)\nResponsible: request processing,\nleaver removal"]
     end
-    subgraph Backend["Zone: Backend — Trusted Internal"]
-        TWC[Teamwork Cloud VM]
-        AD[Active Directory]
-        LIC[License Server]
+    subgraph SECURITY["Security & Compliance"]
+        SEC["Security Team (SEC)\nResponsible: STIG scans,\nthreat model, incident response"]
+        PKI["Enterprise PKI (PKI)\nResponsible: TLS certificate\nissuance & renewal"]
     end
-    USER -->|HTTPS TLS 1.2+| RP
-    RP --> WAP
-    WAP --> AUTHZ
-    WAP --> AUDIT
-    WAP -->|mTLS| TWC
-    WAP -->|LDAPS 636| AD
-    WAP -->|TCP| LIC
+    subgraph INFRA["Infrastructure"]
+        NET["Network / Infra (NET)\nResponsible: firewall rules,\nVM networking"]
+        VS["Vendor Support (VS)\nResponsible: vendor escalation\nand P1 resolution support"]
+    end
+    AO -->|"Accountable"| OPS
+    AO -->|"Accountable"| ACCESS
+    AO -->|"Accountable"| SECURITY
+    AO -->|"Accountable"| INFRA
+    PA -->|"Escalates"| VS
+    PA -->|"Coordinates"| SEC
+    SD -->|"Escalates"| PA
 ```
+
+---
+
+### 2.3 RACI Matrix
+
+| Activity | PA | AO | SEC | NET | ADA | SD | EU | VS | PKI |
+|---|---|---|---|---|---|---|---|---|---|
+| **Deployment & Infrastructure** |||||||||
+| Initial WAP VM provisioning and OS deployment | R | A | C | C | I | I | I | I | I |
+| OS hardening (CIS L2 / DISA STIG) | R | A | C | I | I | I | I | C | I |
+| WAP software installation and configuration | R | A | C | I | I | I | I | C | I |
+| TLS certificate request and issuance | C | A | C | I | I | I | I | I | R |
+| AD service account creation | C | A | I | I | R | I | I | I | I |
+| Firewall rules (WAP port allowlist) | C | A | C | R | I | I | I | I | I |
+| **Operations** |||||||||
+| WAP service start / stop / restart | R | A | I | I | I | I | I | I | I |
+| Health monitoring and alerting | R | A | C | I | I | I | I | I | I |
+| Log review and SIEM integration | R | A | R | I | I | I | I | I | I |
+| **Access Management** |||||||||
+| User access request processing | I | A | I | I | R | R | I | I | I |
+| Role assignment approval | A | A | C | I | I | C | I | I | I |
+| Quarterly access review | R | A | R | I | C | I | I | I | I |
+| Leaver account removal | I | A | I | I | R | R | I | I | I |
+| **Maintenance & Patching** |||||||||
+| OS patch review and application | R | A | C | I | I | I | I | I | I |
+| WAP application update application | R | A | C | I | I | I | I | C | I |
+| TLS certificate renewal (60-day threshold) | R | A | C | I | I | I | I | I | C |
+| **Security & Compliance** |||||||||
+| STIG compliance scan execution | R | A | R | I | I | I | I | I | I |
+| Threat model review | C | A | R | I | I | I | I | I | I |
+| Security incident response | R | A | R | C | C | R | I | C | I |
+| **Incident Management** |||||||||
+| P1 incident declaration | A | A | C | C | I | R | I | I | I |
+| P1 incident resolution coordination | R | A | C | C | I | R | I | C | I |
+| Vendor support engagement | R | A | I | I | I | I | I | R | I |
+| Post-incident review | R | A | R | C | I | C | I | C | I |
+
+---
+
+### 2.4 Incident Severity
+
+```mermaid
+graph TD
+    P1["P1 — Critical\nWAP completely unavailable\nAll users impacted\nResponse: 30 minutes\nOwner: AO / PA"]
+    P2["P2 — High\nMajor feature unavailable\nSignificant user impact\nResponse: 2 hours\nOwner: PA"]
+    P3["P3 — Medium\nDegraded performance\nPartial feature loss\nResponse: 8 hours\nOwner: PA"]
+    P4["P4 — Low\nMinor / cosmetic issue\nNon-blocking\nResponse: Next business day\nOwner: SD"]
+    P1 -->|"Downgrade when stabilised"| P2
+    P2 -->|"Downgrade when stabilised"| P3
+    P3 -->|"Downgrade when stabilised"| P4
+```
+
+| Severity | Definition | Response Target |
+|---|---|---|
+| P1 — Critical | WAP completely unavailable; all users impacted | 30 minutes |
+| P2 — High | Major feature unavailable; significant user impact | 2 hours |
+| P3 — Medium | Degraded performance; partial feature loss | 8 hours |
+| P4 — Low | Minor issue; cosmetic or non-blocking | Next business day |
 
 ---
 
 ## 3. TWC — Teamwork Cloud
 
-> **Source:** `twc/docs/08_rbac_definition_access_matrix.md` | **Status:** Not Started 0.1-DRAFT | **Doc Ref:** DOC-08
-> ⚠️ **Status:** This section is Not Started. AD group names require confirmation.
-### Role Definitions (TWC)
+> **Source:** `twc/docs/09_raci_matrix.md` | **Status:** Not Started 0.1-DRAFT | **Doc Ref:** DOC-09
+### 3.1 Personas
 
-| Role | Description | AD Group (Placeholder) |
-|------|-------------|----------------------|
-| TWC-Admin | Full administrative access to TWC | `<AD_GRP_TWC_ADMIN>` |
-| TWC-ProjectAdmin | Create/manage projects, manage members | `<AD_GRP_TWC_PROJADMIN>` |
-| TWC-Modeller | Read/write access to assigned projects | `<AD_GRP_TWC_MODELLER>` |
-| TWC-Reviewer | Read-only access to assigned projects | `<AD_GRP_TWC_REVIEWER>` |
-| TWC-AuditViewer | Access to audit logs only | `<AD_GRP_TWC_AUDIT>` |
+| Code | Persona |
+|------|---------|
+| SE | Systems Engineers |
+| TA | MBSE Tool Administrators |
+| CO | Cybersecurity Operations |
+| EA | Enterprise & Solution Architects |
 
 ---
 
-### Permission Matrix (TWC)
-
-| Permission | TWC-Admin | TWC-ProjectAdmin | TWC-Modeller | TWC-Reviewer | TWC-AuditViewer |
-|-----------|:---------:|:----------------:|:------------:|:------------:|:---------------:|
-| Create project | ✓ | ✓ | ✗ | ✗ | ✗ |
-| Delete project | ✓ | ✗ | ✗ | ✗ | ✗ |
-| Add project member | ✓ | ✓ | ✗ | ✗ | ✗ |
-| Commit changes | ✓ | ✓ | ✓ | ✗ | ✗ |
-| Read project | ✓ | ✓ | ✓ | ✓ | ✗ |
-| View audit logs | ✓ | ✗ | ✗ | ✗ | ✓ |
-| Manage users | ✓ | ✗ | ✗ | ✗ | ✗ |
-| Server configuration | ✓ | ✗ | ✗ | ✗ | ✗ |
-
----
-
-### TWC Authentication & Authorisation Flow
-
-The sequence below shows how a Cameo client establishes a session with the TWC API. AD group membership is checked at connection time to resolve the caller's TWC role; subsequent authorisation decisions (e.g. project read/write) are made against that resolved role.
+### 3.2 Accountability Map
 
 ```mermaid
-sequenceDiagram
-    participant CameoClient
-    participant TWC_API
-    participant AD
-    participant CA
-    CameoClient->>TWC_API: Connect (HTTPS/mTLS)
-    TWC_API->>CA: Validate client cert
-    TWC_API->>AD: Authenticate & authorise
-    AD-->>TWC_API: Group membership
-    TWC_API-->>CameoClient: Session established
+graph LR
+    EA["Enterprise & Solution Architects (EA)\n— Accountable: Architecture, Deployment, Projects —"]
+    TA["MBSE Tool Administrators (TA)\n— Accountable: User Roles, Health, Backups,\nPatching, Incident Response, RBAC Review —"]
+    CO["Cybersecurity Operations (CO)\n— Accountable: OS Hardening, Security Reviews,\nAudit Logs, RBAC Review —"]
+    subgraph ACTIVITIES["Activity Areas"]
+        ARCH["Architecture & Deployment"]
+        MODELLING["Modelling & Projects"]
+        PLATFORM["Platform Operations"]
+        SECURITY["Security & Compliance"]
+    end
+    EA -->|"Accountable"| ARCH
+    EA -->|"Accountable"| MODELLING
+    TA -->|"Accountable"| PLATFORM
+    CO -->|"Accountable"| SECURITY
+    SE["Systems Engineers (SE)\nResponsible: model authoring,\nproject creation & commits"]
+    SE -->|"Consults"| TA
+    SE -->|"Consults"| EA
 ```
+
+---
+
+### 3.3 RACI Table
+
+| Activity | SE | TA | CO | EA |
+|----------|----|----|----|-----|
+| Define architecture requirements | C | C | C | A/R |
+| Deploy TWC VM | I | R | C | A |
+| Harden OS baseline (STIG/CIS) | I | R | A | I |
+| Configure AD integration | I | R | C | I |
+| Manage TWC user roles | I | A/R | C | I |
+| Create / manage projects | R | C | I | R |
+| Commit model changes | R | I | I | R |
+| Monitor service health | I | A/R | C | I |
+| Perform backups | I | A/R | I | I |
+| Apply OS patches | I | R | A | I |
+| Conduct security reviews | I | C | A/R | C |
+| Review audit logs | I | C | A/R | I |
+| Incident response | I | R | A | I |
+| Quarterly RBAC access review | I | R | A | C |
 
 ---
 
 ## 4. FlexNet — License Server
 
-> **Source:** `flexnet/docs/08_rbac_definition.md` | **Status:** ✅ Complete | **Version:** 0.2.0
-### Roles Summary (FlexNet)
+> **Source:** `flexnet/docs/09_raci_matrix.md` | **Status:** ✅ Complete | **Version:** 0.2.0
+### 4.1 Roles
 
-| Role ID | Role Name | Scope | AD Group |
-|---------|-----------|-------|---------|
-| FNA | FlexNet Administrator | Full lmadmin access; service management via OS sudo | `<AD_GROUP_FLEXNET_ADMIN>` |
-| FNO | FlexNet Operator | Read-only lmadmin; log access; no service control | `<AD_GROUP_FLEXNET_OPERATOR>` |
-| FNT | FlexNet Auditor | Audit log read access only | `<AD_GROUP_FLEXNET_AUDITOR>` |
-| OSA | OS Administrator | RHEL 9 OS management via sudo | `<AD_GROUP_OS_ADMIN>` |
-| SVC | Service Account | Non-interactive; runs `flexnet.service` only | `svc_flexnet` (local system) |
-
----
-
-### Privilege Matrix (FlexNet)
-
-| Action | FNA | FNO | FNT | OSA | SVC |
-|--------|:---:|:---:|:---:|:---:|:---:|
-| View licence checkout status (lmstat) | ✅ | ✅ | ❌ | ✅ | N/A |
-| View audit logs | ✅ | ✅ | ✅ | ✅ | N/A |
-| Start / stop / restart flexnet.service | ✅ | ❌ | ❌ | ✅ | N/A |
-| Force licence reload (lmreread) | ✅ | ❌ | ❌ | ❌ | N/A |
-| Remove stuck checkout (lmremove) | ✅ | ❌ | ❌ | ❌ | N/A |
-| Deploy / replace licence file | ✅ | ❌ | ❌ | ❌ | N/A |
-| lmadmin web console — full admin | ✅ | ❌ | ❌ | ❌ | N/A |
-| lmadmin web console — read-only | ✅ | ✅ | ❌ | ❌ | N/A |
-| OS sudo (full) | ❌ | ❌ | ❌ | ✅ | N/A |
-| Apply OS patches | ❌ | ❌ | ❌ | ✅ | N/A |
-| Run `flexnet.service` process | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Interactive OS login | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Role ID | Role | Representative |
+|---------|------|----------------|
+| PA | Phoenix Programme Architect | `<PA_NAME>` |
+| ISSO | Information Systems Security Officer | `<ISSO_NAME>` |
+| SA | System Administrator (OS / VM / Hypervisor) | `<SA_NAME>` |
+| FNA | FlexNet Administrator | `<FNA_NAME>` |
+| PM | Programme Manager | `<PM_NAME>` |
+| USER | End User (CSM / CST / TWC / WAP) | All tool users |
 
 ---
 
-### Filesystem ACLs (FlexNet)
-
-```bash
-# FlexNet installation directory
-sudo chown -R root:svc_flexnet /opt/flexnet && sudo chmod -R 750 /opt/flexnet
-
-# Licence file — readable by service account; not world-readable
-sudo chown root:svc_flexnet /etc/flexnet/license.lic && sudo chmod 640 /etc/flexnet/license.lic
-
-# TLS private key — root-only read
-sudo chown root:root /etc/flexnet/tls/server.key && sudo chmod 400 /etc/flexnet/tls/server.key
-
-# Log directory
-sudo chown -R svc_flexnet:svc_flexnet /var/log/flexnet && sudo chmod -R 750 /var/log/flexnet
-```
-
----
-
-### Trust Boundaries (FlexNet)
-
-The diagram below shows the two access zones that interact with the licence server. Client applications (CSM, CST, TWC, WAP) perform licence checkouts from the Client Zone. Only personnel in the Management Zone (FlexNet Administrators / OS Administrators) have privileged access. There is no internet connectivity.
+### 4.2 Accountability Map
 
 ```mermaid
 graph TD
-    subgraph ENCLAVE["Air-Gapped Enclave"]
-        subgraph CLIENT_ZONE["Client Zone — Medium Trust"]
-            CT["CSM / CST / TWC / WAP applications"]
-        end
-        subgraph MGMT_ZONE["Management Zone — High Trust"]
-            ADM["FlexNet Administrators"]
-        end
-        subgraph LSVM_ZONE["License Server VM — High Trust"]
-            LS["FlexNet Publisher — lmgrd · vendor daemon · lmadmin"]
-        end
-        CT -->|"Licence checkout (plaintext)"| LS
-        ADM -->|"HTTPS admin"| LS
+    subgraph OPERATIONS["Operations & Monitoring"]
+        FNA["FlexNet Administrator (FNA)\nAccountable: service availability,\nreloads, stuck checkouts, credential rotation,\nlicence expiry, borrow approvals,\noutage detection, recovery runbook"]
+        SA["System Administrator (SA)\nResponsible: OS / VM / hypervisor\npatching, VM snapshot restore,\nfull rebuild"]
     end
-    INTERNET["Internet (NO ACCESS)"]
-    ENCLAVE -.->|"Air gap"| INTERNET
+    subgraph GOVERNANCE["Governance & Security"]
+        ISSO["ISSO\nAccountable: audit logs, SIEM alerts,\nOS hardening, ISSO notification,\npost-recovery validation"]
+        PA["Programme Architect (PA)\nAccountable: licence renewal initiation,\nborrow approval, seat adequacy,\nfull rebuild coordination"]
+        PM["Programme Manager (PM)\nAccountable: seat count adequacy"]
+    end
+    subgraph CONSUMERS["Consumers"]
+        USER["End Users\n(CSM / CST / TWC / WAP)\nProcess borrow requests,\nreport outages"]
+    end
+    FNA -->|"Escalates"| ISSO
+    FNA -->|"Notifies"| PA
+    SA -->|"Reports to"| FNA
+    USER -->|"Requests"| FNA
+    USER -->|"Reports outage to"| FNA
+    PA -->|"Approves"| FNA
+    PM -->|"Approves seat count"| PA
 ```
+
+---
+
+### 4.3 RACI Table — Operations
+
+| Activity | PA | ISSO | SA | FNA | PM | USER |
+|----------|:--:|:----:|:--:|:---:|:--:|:----:|
+| Monitor service availability | I | I | C | A/R | I | I |
+| Restart service on failure | I | I | C | A/R | I | I |
+| Force reload licence file (lmreread) | I | I | I | A/R | I | I |
+| Remove stuck checkout (lmremove) | I | I | I | A/R | I | C |
+| Rotate lmadmin credentials | I | A | I | R | I | I |
+| Review audit logs (weekly) | I | A/R | C | C | I | I |
+| Respond to SIEM alerts | I | A | C | R | I | I |
+
+---
+
+### 4.4 RACI Table — Licence Management
+
+| Activity | PA | ISSO | SA | FNA | PM | USER |
+|----------|:--:|:----:|:--:|:---:|:--:|:----:|
+| Monitor licence expiry dates | I | I | I | A/R | I | I |
+| Initiate licence renewal request | A | I | I | R | C | I |
+| Approve offline licence borrow | A | C | I | R | I | C |
+| Process borrow request (lmborrow) | I | I | I | A/R | I | R |
+| Manage seat count adequacy | A | I | I | C | R | I |
+
+---
+
+### 4.5 RACI Table — Recovery
+
+```mermaid
+graph TD
+    DETECT["Detect & Report Outage\nAccountable: FNA\nResponsible: FNA, SA (C), USER (R)"]
+    RUNBOOK["Invoke Recovery Runbook\nAccountable: FNA\nConsulted: ISSO, SA"]
+    SNAPSHOT["VM Snapshot Restore\nAccountable: SA\nConsulted: ISSO, FNA"]
+    REBUILD["Full Rebuild from Scratch\nAccountable: PA\nResponsible: SA, FNA"]
+    VALIDATE["Post-Recovery Validation\nAccountable: ISSO\nResponsible: FNA\nConsulted: PA, SA"]
+    NOTIFY["ISSO Notification\nAccountable/Responsible: ISSO\nConsulted: PA"]
+    DETECT -->|"Minor outage"| RUNBOOK
+    RUNBOOK -->|"VM restore available"| SNAPSHOT
+    RUNBOOK -->|"Rebuild required"| REBUILD
+    SNAPSHOT -->|"Restored"| VALIDATE
+    REBUILD -->|"Complete"| VALIDATE
+    VALIDATE -->|"Security-relevant event"| NOTIFY
+```
+
+| Activity | PA | ISSO | SA | FNA | PM | USER |
+|----------|:--:|:----:|:--:|:---:|:--:|:----:|
+| Detect and report outage | I | I | C | A/R | I | R |
+| Invoke recovery runbook (doc 05) | I | C | C | A/R | I | I |
+| VM snapshot restore | I | C | A/R | C | I | I |
+| Full rebuild from scratch | A | C | R | R | I | I |
+| Post-recovery validation | C | A | C | R | I | I |
+| ISSO notification (security relevant) | C | A/R | I | I | I | I |
 
 ---
 
 ## 5. CST — Cameo Simulation Toolkit
 
-> **Source:** `cst/docs/08_rbac_definition.md` | **Status:** In Progress 0.2-DRAFT | **Doc Ref:** DOC-08
-### Role Definitions (CST)
+> **Source:** `cst/docs/09_raci_matrix.md` | **Status:** In Progress 0.2-DRAFT | **Doc Ref:** DOC-09
+### 5.1 Persona Key
 
-| Role | Description | Assigned Persona | Granted By |
-|------|-------------|-----------------|-----------|
-| `CST_USER` | Run simulations locally within CSM; view and export own results | Systems Engineers | MBSE Tool Administrator |
-| `CST_SIMULATION_SPECIALIST` | Run advanced simulations; delegate to server-side; configure model execution parameters | Simulation Specialists | MBSE Tool Administrator |
-| `CST_ADMIN` | Install and update CST plugin; configure JVM and licence settings; view audit logs | MBSE Tool Administrators | Platform Operations |
-| `CST_PLATFORM_OPS` | Manage server-side CST service on Windows Server 2025; apply OS hardening; manage AD groups | Platform Operations | Programme Security Authority |
-| `CST_READONLY` | View simulation results only; no simulation execution rights | Reviewers / Auditors | MBSE Tool Administrator |
-
----
-
-### Permission Matrix (CST)
-
-| Permission | CST_USER | CST_SIMULATION_SPECIALIST | CST_ADMIN | CST_PLATFORM_OPS | CST_READONLY |
-|------------|:--------:|:------------------------:|:---------:|:---------------:|:------------:|
-| Run local simulation (CSM client) | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Run server-side simulation (via WAP) | ❌ | ✅ | ✅ | ❌ | ❌ |
-| View own simulation results | ✅ | ✅ | ✅ | ❌ | ❌ |
-| View all simulation results | ❌ | ❌ | ✅ | ✅ | ✅ |
-| Export own results (CSV/XML/PDF) | ✅ | ✅ | ✅ | ❌ | ✅ |
-| Delete simulation results | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Configure JVM settings (client) | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Configure JVM settings (server) | ❌ | ❌ | ❌ | ✅ | ❌ |
-| Install / update CST plugin (client) | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Deploy / restart CST server service | ❌ | ❌ | ❌ | ✅ | ❌ |
-| View Windows Event Log (simulation) | ❌ | ❌ | ✅ | ✅ | ❌ |
-| Manage AD group membership | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Code | Persona | AD Role |
+|------|---------|---------|
+| SE | Systems Engineers | `CST_USER` |
+| SS | Simulation Specialists | `CST_SIMULATION_SPECIALIST` |
+| TA | MBSE Tool Administrators | `CST_ADMIN` |
+| PO | Platform Operations | `CST_PLATFORM_OPS` |
 
 ---
 
-### Server-Side Simulation — AD Role Validation Flow (CST)
-
-The sequence below shows how WAP enforces the CST RBAC roles for server-side simulation. When the AD role check fails, WAP returns `403 Forbidden` before any simulation resource is allocated. This is the primary access enforcement boundary for server-side CST execution.
+### 5.2 Accountability Map
 
 ```mermaid
-sequenceDiagram
-    autonumber
-
-    actor SE as "Systems Engineer"
-    participant CSM as "CSM Client (Windows 10/11)"
-    participant WAP as "Web Application Platform (Windows Server 2025)"
-    participant CST_S as "CST Server Service (JVM)"
-    participant LIC as "FlexNet Licence Server"
-    participant AD as "Active Directory"
-
-    SE ->> CSM: Select model and choose Run Simulation (server-side)
-    CSM ->> WAP: HTTPS POST /simulate (TLS 1.2+, Kerberos token)
-    WAP ->> AD: Validate Kerberos token and check group membership
-
-    alt Auth fails or insufficient role
-        AD -->> WAP: Access denied
-        WAP -->> CSM: 403 Forbidden
+graph LR
+    subgraph SIMULATION["Simulation Operations"]
+        SE["Systems Engineers (SE)\nAccountable: local simulations,\ncancel own, view/export results"]
+        SS["Simulation Specialists (SS)\nAccountable: server-side simulations,\ncancel own, view/export results\nResponsible: triage failures"]
+        TA["MBSE Tool Administrators (TA)\nAccountable: all result exports, cancel any\n(incident), resolve plugin issues,\nescalate to vendor"]
+        PO["Platform Operations (PO)\nAccountable: cancel any (incident),\nresolve service outages,\nescalate to vendor, post-incident review"]
     end
-
-    AD -->> WAP: Auth OK, roles confirmed
-    WAP ->> CST_S: Route simulation request
-    CST_S ->> LIC: Request server-side licence checkout
-    LIC -->> CST_S: Licence granted
-    CST_S ->> CST_S: Execute simulation
-    CST_S ->> LIC: Return licence
-    CST_S -->> WAP: Return result reference
-    WAP -->> CSM: HTTPS 200 with result reference
-    CSM -->> SE: Display simulation results
+    subgraph INCIDENTS["Incident Escalation Path"]
+        L1["L1 — SE / SS detect failure"]
+        L2["L2 — SS triages failure"]
+        L3["L3 — TA resolves plugin issue\nor PO resolves service outage"]
+        L4["L4 — TA escalates to vendor\n(PO accountable)"]
+        PIR["Post-Incident Review\nOwner: PO (A) / TA (R)"]
+    end
+    L1 -->|"Escalate"| L2
+    L2 -->|"Plugin issue"| L3
+    L2 -->|"Service outage"| L3
+    L3 -->|"Cannot resolve"| L4
+    L4 --> PIR
 ```
+
+---
+
+### 5.3 RACI Table — Simulation Operations
+
+| Activity | SE | SS | TA | PO |
+|----------|----|----|----|-----|
+| Run local simulation | R/A | C | I | I |
+| Run server-side simulation | R | A | C | I |
+| Cancel simulation (own) | R/A | R/A | I | I |
+| Cancel simulation (any — incident) | I | I | R | A |
+| View simulation results | R | R | A | I |
+| Export simulation results | R | R | A | I |
+
+---
+
+### 5.4 RACI Table — Incident Response
+
+| Activity | SE | SS | TA | PO |
+|----------|----|----|----|-----|
+| Detect simulation failure (own) | R | R | I | I |
+| Triage simulation failure | C | R | C | I |
+| Resolve plugin issue | I | C | R/A | I |
+| Resolve server-side service outage | I | I | C | R/A |
+| Escalate to vendor support | I | I | R | A |
+| Post-incident review | C | C | R | A |
+
+---
+
+### 5.5 SLA Targets
+
+```mermaid
+graph TD
+    P1C["P1 — Critical\nCST server completely unavailable\nResponse: 15 min | Resolution: 4 hrs\nOwner: Platform Operations"]
+    P2H["P2 — High\nAll simulations failing reproducibly\nResponse: 30 min | Resolution: 8 hrs\nOwner: MBSE Tool Administrator"]
+    P3M["P3 — Medium\nDegraded / intermittent failure\nResponse: 2 hrs | Resolution: 2 business days\nOwner: MBSE Tool Administrator"]
+    P4L["P4 — Low\nSingle-user cosmetic issue\nResponse: Next business day | Resolution: 5 business days\nOwner: MBSE Tool Administrator"]
+    P1C -->|"Downgrade when stabilised"| P2H
+    P2H -->|"Downgrade when stabilised"| P3M
+    P3M -->|"Downgrade when stabilised"| P4L
+```
+
+| Severity | Description | Response Time | Resolution Target | Owner |
+|----------|-------------|--------------|------------------|-------|
+| P1 — Critical | CST server service completely unavailable | 15 minutes | 4 hours | Platform Operations |
+| P2 — High | All simulations failing reproducibly | 30 minutes | 8 hours | MBSE Tool Administrator |
+| P3 — Medium | Degraded performance; intermittent failure | 2 hours | 2 business days | MBSE Tool Administrator |
+| P4 — Low | Single-user cosmetic issue | Next business day | 5 business days | MBSE Tool Administrator |
 
 ---
 
 ## 6. CSM — Cameo Systems Modeler
 
-> **Source:** `csm/docs/08_rbac_definition.md` | **Status:** ✅ Done
-### Role Definitions (CSM)
+> **Source:** `csm/docs/09_raci_matrix.md` | **Status:** ✅ Done
+### 6.1 Roles
 
-| Role ID | Role Name | Description |
-|---|---|---|
-| R01 | Systems Engineer | Primary SysML modelling user |
-| R02 | Lead Architect | Senior modeller; model review and approval |
-| R03 | MBSE Tool Administrator | Manages CSM package, plugins, JVM config |
-| R04 | VDI Platform Engineer | Manages Horizon pool, OS image, profiles |
-| R05 | Cybersecurity Compliance Officer | Reviews compliance posture; approves exceptions |
-
----
-
-### Access Matrix (CSM)
-
-**VDI Access:**
-
-| Permission | R01 | R02 | R03 | R04 | R05 |
-|---|---|---|---|---|---|
-| Connect to Horizon VDI | ✅ | ✅ | ✅ | ✅ | 🔍 Audit only |
-| Local Administrator on VDI | ❌ | ❌ | ⚠️ Break-glass only | ✅ | ❌ |
-| Reset VDI pool desktop | ❌ | ❌ | ❌ | ✅ | ❌ |
-
-**CSM Application:**
-
-| Permission | R01 | R02 | R03 | R04 | R05 |
-|---|---|---|---|---|---|
-| Launch CSM | ✅ | ✅ | ✅ | ❌ | ❌ |
-| Create / edit SysML models | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Approve / baseline models | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Install / update plugins | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Modify JVM configuration | ❌ | ❌ | ✅ | ❌ | ❌ |
-
-**Licence Server:**
-
-| Permission | R01 | R02 | R03 | R04 | R05 |
-|---|---|---|---|---|---|
-| Consume floating licence | ✅ | ✅ | ✅ | ❌ | ❌ |
-| View licence usage | ❌ | ❌ | ✅ | ❌ | ✅ |
-| Administer licence server | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Code | Role |
+|---|---|
+| SE | Systems Engineer |
+| LA | Lead Architect |
+| MBSE | MBSE Tool Administrator |
+| VDI | VDI Platform Engineer |
+| CCO | Cybersecurity Compliance Officer |
+| INFRA | Infrastructure (Licence Server / Network) |
 
 ---
 
-### AD Group Mapping (CSM)
-
-| Role | AD Group | Notes |
-|---|---|---|
-| R01 — Systems Engineer | `<AD_GROUP_SE>` | Grants Horizon pool entitlement; FlexNet licence seat |
-| R02 — Lead Architect | `<AD_GROUP_LA>` | Grants Horizon pool entitlement; FlexNet licence seat; TWC project create rights |
-| R03 — MBSE Tool Admin | `<AD_GROUP_ADMIN>` | Grants Horizon admin console access; Numecent admin access |
-| R04 — VDI Platform Engineer | `<AD_GROUP_VDI>` | Grants Horizon infrastructure admin rights |
-| R05 — Compliance Officer | `<AD_GROUP_COMPLIANCE>` | Read-only audit access |
-
----
-
-### CSM Deployment Model
-
-The diagram below shows the runtime topology of the CSM deployment. All user identity flows through Active Directory (Kerberos); the licence server connection and optional TWC connection are the only outbound network paths allowed from the VDI.
+### 6.2 Accountability Map
 
 ```mermaid
 graph TD
-    A[User — Systems Engineer] -->|Horizon Blast Extreme| B[VMware Horizon VDI - Persistent Desktop]
-    B -->|Numecent Package| C[CSM Local Execution - JVM + Plugins]
-    C -->|FlexNet/DSLS| D[License Server]
-    C -->|Optional| E[Teamwork Cloud]
-    B -->|AD Auth| F[Active Directory]
+    subgraph DEPLOYMENT["Deployment & Packaging"]
+        VDI_D["VDI Platform Engineer (VDI)\nAccountable: gold image build,\nAV exclusions, VDI pool entitlement,\nOS patches"]
+        MBSE_D["MBSE Tool Administrator (MBSE)\nAccountable: CSM Numecent package,\nfloating licence assignment,\nCSM version updates"]
+        INFRA_D["Infrastructure (INFRA)\nAccountable: licence server connection,\nnetwork allow-list,\nAD account provisioning"]
+    end
+    subgraph OPERATIONS["Operations"]
+        LA_O["Lead Architect (LA)\nAccountable: model approval\nand baselining"]
+        SE_O["Systems Engineer (SE)\nAccountable: model authoring,\nincident reporting"]
+        CCO_O["Cybersecurity Compliance Officer (CCO)\nAccountable: AV exclusions approval,\nsecurity compliance review,\nincident closure & review"]
+    end
+    subgraph INCIDENTS["Incident Management"]
+        TRIAGE["Triage & Diagnose\nOwner: MBSE (R) / VDI (R)"]
+        ESCALATE["Escalate to Vendor\nAccountable: MBSE"]
+        CLOSE["Closure & Review\nAccountable: CCO"]
+    end
+    SE_O -->|"Reports incident"| TRIAGE
+    LA_O -->|"Reports incident"| TRIAGE
+    TRIAGE -->|"Vendor issue"| ESCALATE
+    ESCALATE --> CLOSE
+    MBSE_D -->|"Coordinates"| VDI_D
+    INFRA_D -->|"Supports"| MBSE_D
 ```
 
 ---
 
-### CSM Logical Component — External Auth Connections
+### 6.3 RACI Table
 
-The diagram below shows the logical components of the CSM deployment and how the VDI desktop connects to external services. Active Directory is the identity authority for all authentication; there is no direct internet access.
-
-```mermaid
-graph LR
-    subgraph VDI["VMware Horizon Persistent VDI Desktop"]
-        subgraph Numecent["Numecent Runtime Environment"]
-            CSM["Cameo Systems Modeler"]
-            JVM["Embedded JVM (vendor-packaged)"]
-            P1["Plugin: SysML"]
-            P2["Plugin: Requirements Modeler"]
-            P3["Plugin: DataHub (if approved)"]
-            CSM --> JVM
-            CSM --> P1
-            CSM --> P2
-            CSM --> P3
-        end
-        OS["Windows 10/11 Enterprise (STIG/CIS Hardened)"]
-    end
-    subgraph External["External Services (Allow-Listed)"]
-        LS["FlexNet / DSLS License Server"]
-        TWC["Teamwork Cloud (Optional)"]
-        AD["Active Directory"]
-    end
-    VDI -->|"TCP — Licence Checkout"| LS
-    VDI -->|"HTTPS — Model Sync (if enabled)"| TWC
-    VDI -->|"Kerberos / LDAP"| AD
-```
+| Activity | SE | LA | MBSE | VDI | CCO | INFRA |
+|---|---|---|---|---|---|---|
+| **Deployment & Packaging** |||||||
+| Build VDI gold image | I | I | C | R/A | C | I |
+| Package CSM in Numecent | I | I | R/A | I | C | I |
+| Configure licence server connection | I | I | C | I | I | R/A |
+| Configure network allow-list | I | I | C | C | C | R/A |
+| Configure AV exclusions | I | I | C | R | A | I |
+| **User Onboarding** |||||||
+| Provision AD account | I | I | C | I | I | R/A |
+| Assign VDI pool entitlement | I | I | C | R/A | I | I |
+| Assign floating licence | I | I | R/A | I | I | C |
+| **Operations** |||||||
+| Author SysML models | R | R | I | I | I | I |
+| Approve / baseline models | C | R/A | I | I | I | I |
+| Monitor licence utilisation | I | I | R | I | A | C |
+| Monitor VDI health | I | I | I | R/A | I | I |
+| Apply OS patches | I | I | C | R/A | C | I |
+| Update CSM package version | I | I | R/A | C | C | I |
+| Review security compliance | I | I | C | C | R/A | I |
+| **Incident Management** |||||||
+| Report incident | R | R | I | I | I | I |
+| Triage and diagnose | I | I | R | R | C | C |
+| Escalate to vendor | I | I | R/A | C | I | I |
+| Incident closure and review | I | I | C | C | R/A | I |
 
 ---
 
-## 7. Cross-Component RBAC Summary
-
-### AD Group Index (All Components)
-
-| AD Group | Component | Role | Privilege Level |
-|---|---|---|---|
-| `SG-WAP-Admins` | WAP | Platform Administrator (WAP-R01) | Highest |
-| `SG-WAP-CollabUsers` | WAP | Collaborator User (WAP-R02) | Standard |
-| `SG-WAP-CollabViewers` | WAP | Collaborator Viewer (WAP-R03) | Read-only |
-| `SG-WAP-DocExport` | WAP | Document Export User (WAP-R04) | Functional |
-| `SG-WAP-SimUsers` | WAP | Simulation User (WAP-R05) | Functional |
-| `SG-WAP-API` | WAP | API Consumer (WAP-R06) | Service |
-| `<AD_GRP_TWC_ADMIN>` | TWC | TWC-Admin | Full admin |
-| `<AD_GRP_TWC_PROJADMIN>` | TWC | TWC-ProjectAdmin | Project admin |
-| `<AD_GRP_TWC_MODELLER>` | TWC | TWC-Modeller | Read/write |
-| `<AD_GRP_TWC_REVIEWER>` | TWC | TWC-Reviewer | Read-only |
-| `<AD_GRP_TWC_AUDIT>` | TWC | TWC-AuditViewer | Audit only |
-| `<AD_GROUP_FLEXNET_ADMIN>` | FlexNet | FlexNet Administrator (FNA) | Full lmadmin |
-| `<AD_GROUP_FLEXNET_OPERATOR>` | FlexNet | FlexNet Operator (FNO) | Read-only lmadmin |
-| `<AD_GROUP_FLEXNET_AUDITOR>` | FlexNet | FlexNet Auditor (FNT) | Audit logs only |
-| `<AD_GROUP_OS_ADMIN>` | FlexNet | OS Administrator (OSA) | OS sudo |
-| `<AD_GROUP_SE>` | CSM | Systems Engineer (R01) | Model authoring |
-| `<AD_GROUP_LA>` | CSM | Lead Architect (R02) | Model approval; TWC project create |
-| `<AD_GROUP_ADMIN>` | CSM | MBSE Tool Administrator (R03) | Tool admin |
-| `<AD_GROUP_VDI>` | CSM | VDI Platform Engineer (R04) | VDI infra admin |
-| `<AD_GROUP_COMPLIANCE>` | CSM | Compliance Officer (R05) | Audit read-only |
-
----
-
-### Persona-to-Role Mapping (Cross-Component)
-
-| Persona | WAP Role | TWC Role | FlexNet | CST Role | CSM Role |
-|---|---|---|---|---|---|
-| Systems Engineer | WAP-R02 Collab User | TWC-Modeller | Seat consumer (via `<AD_GROUP_SE>`) | `CST_USER` | R01 Systems Engineer |
-| Lead Architect / Senior Modeller | WAP-R02 Collab User | TWC-ProjectAdmin | Seat consumer (via `<AD_GROUP_LA>`) | `CST_USER` | R02 Lead Architect |
-| MBSE Tool Administrator | WAP-R01 Platform Admin | TWC-Admin | FNA FlexNet Admin (via `<AD_GROUP_ADMIN>`) | `CST_ADMIN` | R03 MBSE Tool Admin |
-| Simulation Specialist | WAP-R05 Simulation User | TWC-Modeller | Seat consumer | `CST_SIMULATION_SPECIALIST` | R01 Systems Engineer |
-| VDI Platform Engineer | — | — | OSA OS Admin (via `<AD_GROUP_VDI>`) | `CST_PLATFORM_OPS` | R04 VDI Platform Engineer |
-| Cybersecurity Compliance Officer | WAP-R03 Viewer | TWC-AuditViewer | FNT Auditor | `CST_READONLY` | R05 Compliance Officer |
-| Reviewer / Auditor | WAP-R03 Viewer | TWC-Reviewer | — | `CST_READONLY` | — |
-| API / Service Account | WAP-R06 API Consumer | — | — | — | — |
-| FlexNet Operator | — | — | FNO FlexNet Operator | — | — |
-
----
-
-### Service Accounts (All Components)
-
-| Account | Component | Purpose | Rotation |
-|---|---|---|---|
-| `svc-wap-twc` | WAP | WAP → TWC REST API integration | Quarterly |
-| `svc-wap-bind` | WAP | LDAP bind account for AD authentication | Quarterly |
-| `svc_flexnet` | FlexNet | Runs `flexnet.service`; non-interactive | N/A (local system account) |
-
----
-
-*Generated: 2026-04-09 | Classification: OFFICIAL — SENSITIVE | Author: Iain Reid*
+*Generated: 2026-04-08 | Classification: OFFICIAL — SENSITIVE | Author: Iain Reid*
