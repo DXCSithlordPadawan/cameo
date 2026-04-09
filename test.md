@@ -1,95 +1,31 @@
-# Phoenix CAMEO — System Architecture
+# Phoenix CAMEO — RBAC Reference
 
 > **Programme:** Phoenix CAMEO MBSE
-> **Document Type:** Architecture Overview
-> **Classification:** OFFICIAL — SENSITIVE
-> **Generated:** 2026-04-08
-> **Author:** Iain Reid
+> **Document Type:** RBAC Reference — Unified System View
+> **Generated:** 2026-04-09
 > **Components Covered:** WAP · TWC · FlexNet · CST · CSM
+> **Classification:** OFFICIAL — SENSITIVE | **Author:** Iain Reid
 ---
 
 ## Contents
 
-1. [Introduction](#1-introduction)
-2. [WAP — Web Application Platform](#2-wap--web-application-platform)
-   - [2.1 Purpose](#21-purpose)
-   - [2.2 Scope](#22-scope)
-   - [2.3 System Context](#23-system-context)
-   - [2.4 Non-Functional Characteristics](#24-non-functional-characteristics)
-   - [2.5 Security Posture Summary](#25-security-posture-summary)
-3. [TWC — Teamwork Cloud](#3-twc--teamwork-cloud)
-   - [3.1 Purpose](#31-purpose)
-   - [3.2 Key Components](#32-key-components)
-   - [3.3 System Context](#33-system-context)
-   - [3.4 Quality Attributes](#34-quality-attributes)
-4. [FlexNet — License Server](#4-flexnet--license-server)
-   - [4.1 Purpose](#41-purpose)
-   - [4.2 System Context](#42-system-context)
-   - [4.3 Components](#43-components)
-   - [4.4 Served Products](#44-served-products)
-   - [4.5 High Availability and Recovery](#45-high-availability-and-recovery)
-5. [CST — Cameo Simulation Toolkit](#5-cst--cameo-simulation-toolkit)
-   - [5.1 Purpose](#51-purpose)
-   - [5.2 Execution Modes](#52-execution-modes)
-   - [5.3 System Context](#53-system-context)
-   - [5.4 Quality Attributes](#54-quality-attributes)
-   - [5.5 Open Issues](#55-open-issues)
-6. [CSM — Cameo Systems Modeler](#6-csm--cameo-systems-modeler)
-   - [6.1 Purpose](#61-purpose)
-   - [6.2 Deployment Model](#62-deployment-model)
-   - [6.3 Component Summary](#63-component-summary)
-   - [6.4 Key Design Decisions](#64-key-design-decisions)
+- [1. System Overview](#1-system-overview)
+- [2. WAP — Web Application Platform](#2-wap--web-application-platform)
+- [3. TWC — Teamwork Cloud](#3-twc--teamwork-cloud)
+- [4. FlexNet — License Server](#4-flexnet--license-server)
+- [5. CST — Cameo Simulation Toolkit](#5-cst--cameo-simulation-toolkit)
+- [6. CSM — Cameo Systems Modeler](#6-csm--cameo-systems-modeler)
+- [7. Cross-Component RBAC Summary](#7-cross-component-rbac-summary)
 
 ---
 
-## 1. Introduction
+## 1. System Overview
 
-The Phoenix CAMEO deployment is a secure, air-gapped MBSE (Model-Based Systems Engineering) toolchain. It is composed of five distinct infrastructure components, each with a dedicated architectural role:
+The Phoenix CAMEO MBSE toolchain enforces role-based access control (RBAC) at every tier. All identities are managed through Active Directory (AD); roles are assigned via AD group membership and enforced at the application layer of each component. There are no local application accounts. All privileged actions are logged to a SIEM.
 
-| Component | Full Name | Role |
-|-----------|-----------|------|
-| **WAP** | Web Application Platform | Stateless web and service tier; hosts Cameo Collaborator, Document Exporter, Resources App, and server-side CST |
-| **TWC** | Teamwork Cloud | Stateful central model repository backed by Apache Cassandra and Zookeeper |
-| **FlexNet** | FlexNet License Server | Mission-critical floating licence enforcement for all Dassault Systèmes products |
-| **CST** | Cameo Simulation Toolkit | SysML behavioural simulation engine — runs locally within CSM or server-side via WAP |
-| **CSM** | Cameo Systems Modeler | Primary desktop MBSE authoring client, delivered via Numecent virtualisation on VMware Horizon VDI |
+### System Context
 
-All components operate within an air-gapped enterprise enclave, communicating over TLS-secured internal channels, authenticating against Active Directory, and checking out floating licences from the shared FlexNet License Server VM.
-
----
-
-## 2. WAP — Web Application Platform
-
-### 2.1 Purpose
-
-The Web Application Platform (WAP) VM delivers all web-facing and service-oriented capabilities of the Dassault Systèmes / No Magic CAMEO toolchain. It is architecturally isolated from the stateful Teamwork Cloud repository tier, enabling independent scaling, JVM tuning, and rolling upgrades without risk to model data integrity.
-
----
-
-### 2.2 Scope
-
-**In Scope — Hosted on This VM**
-
-| Component | Role |
-|---|---|
-| Web Application Platform (WAP) | Platform runtime hosting all web services |
-| Cameo Collaborator | Browser-based MBSE model review and collaboration |
-| Resources Application | Shared resource serving (icons, libraries, attachments) |
-| Document Exporter | Server-side document generation from MBSE models |
-| CST Simulation Services | Server-side SysML simulation execution |
-
-**Out of Scope — NOT Hosted Here**
-
-| Component | Rationale |
-|---|---|
-| Teamwork Cloud | Stateful I/O-intensive — hosted on dedicated TWC VM |
-| Apache Cassandra | TWC persistence layer — co-located with TWC |
-| Zookeeper | TWC cluster coordination — co-located with TWC |
-| License Server (FlexNet / DSLS) | Mission-critical shared service — dedicated License VM |
-
----
-
-### 2.3 System Context
+The diagram below shows the users, administrators, and external systems that interact with the platform. Roles defined in the sections that follow are mapped to the `Internal User` and `Platform Administrator` personas shown here.
 
 ```mermaid
 C4Context
@@ -117,214 +53,339 @@ C4Context
 
 ---
 
-### 2.4 Non-Functional Characteristics
+## 2. WAP — Web Application Platform
 
-| Characteristic | Requirement |
-|---|---|
-| Statefulness | Stateless — no persistent data stored locally on restart |
-| CPU profile | CPU-intensive (JVM + simulation); tuned GC and heap required |
-| TLS | All user and admin endpoints are TLS 1.2+ only |
-| Data at rest | No model data stored locally; configuration files only |
-| Scalability | Horizontal scaling supported behind load balancer |
+> **Source:** `wap/docs/08_rbac_definition.md` | **Status:** Draft 0.2 | **Doc Ref:** WAP-DOC-08
+### Role Definitions (WAP)
+
+| Role ID | Role Name | Description | AD Group (TBC) | Privilege Level |
+|---|---|---|---|---|
+| WAP-R01 | Platform Administrator | Full administrative access to WAP configuration, services, and audit logs | `SG-WAP-Admins` | Highest |
+| WAP-R02 | Collaborator User | Read/write access to Cameo Collaborator — view, comment, annotate models | `SG-WAP-CollabUsers` | Standard |
+| WAP-R03 | Collaborator Viewer | Read-only access to Cameo Collaborator | `SG-WAP-CollabViewers` | Read-only |
+| WAP-R04 | Document Export User | Collaborator Viewer access + submit document export jobs | `SG-WAP-DocExport` | Functional |
+| WAP-R05 | Simulation User | Collaborator Viewer access + submit and monitor CST simulation jobs | `SG-WAP-SimUsers` | Functional |
+| WAP-R06 | API Consumer | Programmatic service account access to WAP REST API | `SG-WAP-API` | Service |
 
 ---
 
-### 2.5 Security Posture Summary
+### Access Control Matrix (WAP)
 
-| Control Area | Approach |
-|---|---|
-| Authentication | Active Directory via LDAPS — no local accounts |
-| Authorisation | Role-based access control (see WAP-DOC-08) |
-| Transport security | TLS 1.2+ with FIPS 140-3 approved cipher suites |
-| Host hardening | DISA STIG + CIS Benchmark Level 2 applied at OS layer |
-| Crypto | FIPS 140-3 compliant JVM and TLS modules |
-| Audit logging | All admin and user actions logged centrally |
+✅ = Permitted | ❌ = Denied | 🔍 = Permitted with audit log entry
+
+| Capability | R01 Admin | R02 Collab User | R03 Viewer | R04 Doc Export | R05 Sim User | R06 API |
+|---|---|---|---|---|---|---|
+| Login to web interface | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| API token authentication | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| List accessible projects | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Browse model elements and diagrams | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Add comments / annotations | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Submit document export job | ✅ 🔍 | ✅ | ❌ | ✅ 🔍 | ❌ | ✅ 🔍 |
+| Download own export result | ✅ | ✅ | ❌ | ✅ | ❌ | ✅ |
+| View all users' export jobs | ✅ 🔍 | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Submit simulation job | ✅ 🔍 | ❌ | ❌ | ❌ | ✅ 🔍 | ✅ 🔍 |
+| View own simulation job status | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ |
+| Cancel any simulation job | ✅ 🔍 | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Access admin console | ✅ 🔍 | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Manage service configuration | ✅ 🔍 | ❌ | ❌ | ❌ | ❌ | ❌ |
+| View audit logs | ✅ 🔍 | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+---
+
+### Service Account Definitions (WAP)
+
+| Account ID | Account Name | Purpose | Permissions | Rotation |
+|---|---|---|---|---|
+| WAP-SA-01 | `svc-wap-twc` | WAP → TWC REST API integration | Read access to all TWC projects | Quarterly |
+| WAP-SA-02 | `svc-wap-bind` | LDAP bind account for AD authentication | Read-only AD bind — no write | Quarterly |
+
+---
+
+### Trust Boundaries & RBAC Enforcement (WAP)
+
+The diagram below shows where RBAC / AuthZ enforcement sits within the WAP processing pipeline. All inbound requests from the internal user network pass through TLS termination before reaching the WAP Application Layer. The RBAC/AuthZ Enforcement node validates the caller's role (resolved from AD group membership) before any capability is exercised. All admin and user actions are forwarded to the Audit Logger.
+
+```mermaid
+graph LR
+    subgraph Untrusted["Zone: Internal User Network (Untrusted Input)"]
+        USER[Internal User Browser]
+    end
+    subgraph WAP_BOUNDARY["Zone: WAP VM — TLS Boundary"]
+        RP[TLS Termination / Reverse Proxy]
+        WAP[WAP Application Layer]
+        AUTHZ[RBAC / AuthZ Enforcement]
+        AUDIT[Audit Logger]
+    end
+    subgraph Backend["Zone: Backend — Trusted Internal"]
+        TWC[Teamwork Cloud VM]
+        AD[Active Directory]
+        LIC[License Server]
+    end
+    USER -->|HTTPS TLS 1.2+| RP
+    RP --> WAP
+    WAP --> AUTHZ
+    WAP --> AUDIT
+    WAP -->|mTLS| TWC
+    WAP -->|LDAPS 636| AD
+    WAP -->|TCP| LIC
+```
 
 ---
 
 ## 3. TWC — Teamwork Cloud
 
-### 3.1 Purpose
+> **Source:** `twc/docs/08_rbac_definition_access_matrix.md` | **Status:** Not Started 0.1-DRAFT | **Doc Ref:** DOC-08
+> ⚠️ **Status:** This section is Not Started. AD group names require confirmation.
+### Role Definitions (TWC)
 
-The Teamwork Cloud (TWC) Core Repository VM provides the stateful, I/O-intensive persistence and collaboration backbone for all MBSE model data within the Phoenix CAMEO toolchain. It is architecturally separated from the stateless WAP tier to protect model data integrity and enable independent maintenance of each tier.
-
----
-
-### 3.2 Key Components
-
-| Component | Role | Notes |
-|-----------|------|-------|
-| Teamwork Cloud | Core persistence & collaboration | |
-| Apache Cassandra | Distributed data store | |
-| Zookeeper | Cluster coordination | |
+| Role | Description | AD Group (Placeholder) |
+|------|-------------|----------------------|
+| TWC-Admin | Full administrative access to TWC | `<AD_GRP_TWC_ADMIN>` |
+| TWC-ProjectAdmin | Create/manage projects, manage members | `<AD_GRP_TWC_PROJADMIN>` |
+| TWC-Modeller | Read/write access to assigned projects | `<AD_GRP_TWC_MODELLER>` |
+| TWC-Reviewer | Read-only access to assigned projects | `<AD_GRP_TWC_REVIEWER>` |
+| TWC-AuditViewer | Access to audit logs only | `<AD_GRP_TWC_AUDIT>` |
 
 ---
 
-### 3.3 System Context
+### Permission Matrix (TWC)
+
+| Permission | TWC-Admin | TWC-ProjectAdmin | TWC-Modeller | TWC-Reviewer | TWC-AuditViewer |
+|-----------|:---------:|:----------------:|:------------:|:------------:|:---------------:|
+| Create project | ✓ | ✓ | ✗ | ✗ | ✗ |
+| Delete project | ✓ | ✗ | ✗ | ✗ | ✗ |
+| Add project member | ✓ | ✓ | ✗ | ✗ | ✗ |
+| Commit changes | ✓ | ✓ | ✓ | ✗ | ✗ |
+| Read project | ✓ | ✓ | ✓ | ✓ | ✗ |
+| View audit logs | ✓ | ✗ | ✗ | ✗ | ✓ |
+| Manage users | ✓ | ✗ | ✗ | ✗ | ✗ |
+| Server configuration | ✓ | ✗ | ✗ | ✗ | ✗ |
+
+---
+
+### TWC Authentication & Authorisation Flow
+
+The sequence below shows how a Cameo client establishes a session with the TWC API. AD group membership is checked at connection time to resolve the caller's TWC role; subsequent authorisation decisions (e.g. project read/write) are made against that resolved role.
 
 ```mermaid
-C4Context
-    title System Context — TWC Core Repository VM
-    %% TODO: populate after architecture elaboration
+sequenceDiagram
+    participant CameoClient
+    participant TWC_API
+    participant AD
+    participant CA
+    CameoClient->>TWC_API: Connect (HTTPS/mTLS)
+    TWC_API->>CA: Validate client cert
+    TWC_API->>AD: Authenticate & authorise
+    AD-->>TWC_API: Group membership
+    TWC_API-->>CameoClient: Session established
 ```
-
----
-
-### 3.4 Quality Attributes
-
-| Attribute | Target |
-|-----------|--------|
-| Availability | ≥ 99.9% |
-| Storage latency | < 20 ms (intra-DC) |
-| Data durability | No loss on JVM restart |
 
 ---
 
 ## 4. FlexNet — License Server
 
-### 4.1 Purpose
+> **Source:** `flexnet/docs/08_rbac_definition.md` | **Status:** ✅ Complete | **Version:** 0.2.0
+### Roles Summary (FlexNet)
 
-The license server is **mission-critical**: all Dassault Systèmes tooling (Cameo Systems Modeler, Cameo Simulation Toolkit, Teamwork Cloud, and Web Application Platform) requires a valid floating licence checkout before any session can be established. An unplanned outage causes **complete tool unavailability** across all users simultaneously.
+| Role ID | Role Name | Scope | AD Group |
+|---------|-----------|-------|---------|
+| FNA | FlexNet Administrator | Full lmadmin access; service management via OS sudo | `<AD_GROUP_FLEXNET_ADMIN>` |
+| FNO | FlexNet Operator | Read-only lmadmin; log access; no service control | `<AD_GROUP_FLEXNET_OPERATOR>` |
+| FNT | FlexNet Auditor | Audit log read access only | `<AD_GROUP_FLEXNET_AUDITOR>` |
+| OSA | OS Administrator | RHEL 9 OS management via sudo | `<AD_GROUP_OS_ADMIN>` |
+| SVC | Service Account | Non-interactive; runs `flexnet.service` only | `svc_flexnet` (local system) |
 
 ---
 
-### 4.2 System Context
+### Privilege Matrix (FlexNet)
 
-```mermaid
-graph TD
-    subgraph AIRGAP["Air-Gapped Enterprise Enclave"]
-        subgraph CLIENTS["Client / Server Application Zone"]
-            CSM["Cameo Systems Modeler (Client Workstations)"]
-            CST["Cameo Simulation Toolkit (Client Workstations)"]
-            TWC["Teamwork Cloud (Application Server)"]
-            WAP["Web Application Platform (Application Server)"]
-        end
-        subgraph LSVM["FlexNet License Server VM (RHEL 9)"]
-            lmgrd["lmgrd :27000"]
-            vendor["Vendor Daemon :<VENDOR_DAEMON_PORT>"]
-            lmadmin["lmadmin :8090 (HTTPS/TLS)"]
-            licfile[("license.lic /etc/flexnet/")]
-        end
-        ADMIN["FlexNet Administrators"] -->|"HTTPS :8090"| lmadmin
-        CSM & CST & TWC & WAP -->|"TCP :27000 checkout"| lmgrd
-        lmgrd --> vendor
-        lmgrd --> licfile
-    end
+| Action | FNA | FNO | FNT | OSA | SVC |
+|--------|:---:|:---:|:---:|:---:|:---:|
+| View licence checkout status (lmstat) | ✅ | ✅ | ❌ | ✅ | N/A |
+| View audit logs | ✅ | ✅ | ✅ | ✅ | N/A |
+| Start / stop / restart flexnet.service | ✅ | ❌ | ❌ | ✅ | N/A |
+| Force licence reload (lmreread) | ✅ | ❌ | ❌ | ❌ | N/A |
+| Remove stuck checkout (lmremove) | ✅ | ❌ | ❌ | ❌ | N/A |
+| Deploy / replace licence file | ✅ | ❌ | ❌ | ❌ | N/A |
+| lmadmin web console — full admin | ✅ | ❌ | ❌ | ❌ | N/A |
+| lmadmin web console — read-only | ✅ | ✅ | ❌ | ❌ | N/A |
+| OS sudo (full) | ❌ | ❌ | ❌ | ✅ | N/A |
+| Apply OS patches | ❌ | ❌ | ❌ | ✅ | N/A |
+| Run `flexnet.service` process | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Interactive OS login | ❌ | ❌ | ❌ | ✅ | ❌ |
+
+---
+
+### Filesystem ACLs (FlexNet)
+
+```bash
+# FlexNet installation directory
+sudo chown -R root:svc_flexnet /opt/flexnet && sudo chmod -R 750 /opt/flexnet
+
+# Licence file — readable by service account; not world-readable
+sudo chown root:svc_flexnet /etc/flexnet/license.lic && sudo chmod 640 /etc/flexnet/license.lic
+
+# TLS private key — root-only read
+sudo chown root:root /etc/flexnet/tls/server.key && sudo chmod 400 /etc/flexnet/tls/server.key
+
+# Log directory
+sudo chown -R svc_flexnet:svc_flexnet /var/log/flexnet && sudo chmod -R 750 /var/log/flexnet
 ```
 
 ---
 
-### 4.3 Components
+### Trust Boundaries (FlexNet)
 
-| Component | Role | Port |
-|-----------|------|------|
-| lmgrd | License Manager Daemon — accepts checkout requests | TCP 27000 |
-| lmadmin | Web Administration Interface | HTTPS 8090 |
-| Vendor Daemon | Dassault Systèmes-supplied binary, product-specific licence policy | TCP `<VENDOR_DAEMON_PORT>` |
-| Licence File (.lic) | Server-bound licence file tied to host MAC address | — |
+The diagram below shows the two access zones that interact with the licence server. Client applications (CSM, CST, TWC, WAP) perform licence checkouts from the Client Zone. Only personnel in the Management Zone (FlexNet Administrators / OS Administrators) have privileged access. There is no internet connectivity.
 
----
-
-### 4.4 Served Products
-
-| Product | Short | FlexNet Feature Name | Licence Type |
-|---------|-------|---------------------|--------------|
-| Cameo Systems Modeler | CSM | `<CSM_FEATURE_NAME>` | Floating |
-| Cameo Simulation Toolkit | CST | `<CST_FEATURE_NAME>` | Floating |
-| Teamwork Cloud | TWC | `<TWC_FEATURE_NAME>` | Floating |
-| Web Application Platform | WAP | `<WAP_FEATURE_NAME>` | Floating |
-
----
-
-### 4.5 High Availability and Recovery
-
-| Mechanism | Description |
-|-----------|-------------|
-| Hypervisor snapshots | Weekly automated + pre/post every change |
-| Service auto-restart | `systemd` `Restart=on-failure` with back-off |
-| Licence file backup | Stored separately from VM; restorable independently |
-| Documented runbook | Full step-by-step in `docs/05_license_recovery_failover_runbook.md` |
-
-**No hot standby.** Recovery is snapshot-based with documented RTO of **4 hours** (draft — requires ISSO/AO approval).
+```mermaid
+graph TD
+    subgraph ENCLAVE["Air-Gapped Enclave"]
+        subgraph CLIENT_ZONE["Client Zone — Medium Trust"]
+            CT["CSM / CST / TWC / WAP applications"]
+        end
+        subgraph MGMT_ZONE["Management Zone — High Trust"]
+            ADM["FlexNet Administrators"]
+        end
+        subgraph LSVM_ZONE["License Server VM — High Trust"]
+            LS["FlexNet Publisher — lmgrd · vendor daemon · lmadmin"]
+        end
+        CT -->|"Licence checkout (plaintext)"| LS
+        ADM -->|"HTTPS admin"| LS
+    end
+    INTERNET["Internet (NO ACCESS)"]
+    ENCLAVE -.->|"Air gap"| INTERNET
+```
 
 ---
 
 ## 5. CST — Cameo Simulation Toolkit
 
-### 5.1 Purpose
+> **Source:** `cst/docs/08_rbac_definition.md` | **Status:** In Progress 0.2-DRAFT | **Doc Ref:** DOC-08
+### Role Definitions (CST)
 
-CST enables Systems Engineers to execute, validate, and analyse SysML behavioural models — including state machines, activity diagrams, parametric models, and executable constraint blocks — directly within Cameo Systems Modeler (CSM) or delegated to a remote execution service.
-
----
-
-### 5.2 Execution Modes
-
-| Mode | Platform | Trigger | Licence Checkout |
-|------|----------|---------|-----------------|
-| **Local (client-side)** | Windows 10/11 | User launches simulation within CSM | Client floating checkout |
-| **Server-side** | Windows Server 2025 (via WAP) | User delegates from CSM client | Server-side floating checkout pool |
+| Role | Description | Assigned Persona | Granted By |
+|------|-------------|-----------------|-----------|
+| `CST_USER` | Run simulations locally within CSM; view and export own results | Systems Engineers | MBSE Tool Administrator |
+| `CST_SIMULATION_SPECIALIST` | Run advanced simulations; delegate to server-side; configure model execution parameters | Simulation Specialists | MBSE Tool Administrator |
+| `CST_ADMIN` | Install and update CST plugin; configure JVM and licence settings; view audit logs | MBSE Tool Administrators | Platform Operations |
+| `CST_PLATFORM_OPS` | Manage server-side CST service on Windows Server 2025; apply OS hardening; manage AD groups | Platform Operations | Programme Security Authority |
+| `CST_READONLY` | View simulation results only; no simulation execution rights | Reviewers / Auditors | MBSE Tool Administrator |
 
 ---
 
-### 5.3 System Context
+### Permission Matrix (CST)
+
+| Permission | CST_USER | CST_SIMULATION_SPECIALIST | CST_ADMIN | CST_PLATFORM_OPS | CST_READONLY |
+|------------|:--------:|:------------------------:|:---------:|:---------------:|:------------:|
+| Run local simulation (CSM client) | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Run server-side simulation (via WAP) | ❌ | ✅ | ✅ | ❌ | ❌ |
+| View own simulation results | ✅ | ✅ | ✅ | ❌ | ❌ |
+| View all simulation results | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Export own results (CSV/XML/PDF) | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Delete simulation results | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Configure JVM settings (client) | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Configure JVM settings (server) | ❌ | ❌ | ❌ | ✅ | ❌ |
+| Install / update CST plugin (client) | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Deploy / restart CST server service | ❌ | ❌ | ❌ | ✅ | ❌ |
+| View Windows Event Log (simulation) | ❌ | ❌ | ✅ | ✅ | ❌ |
+| Manage AD group membership | ❌ | ❌ | ❌ | ✅ | ❌ |
+
+---
+
+### Server-Side Simulation — AD Role Validation Flow (CST)
+
+The sequence below shows how WAP enforces the CST RBAC roles for server-side simulation. When the AD role check fails, WAP returns `403 Forbidden` before any simulation resource is allocated. This is the primary access enforcement boundary for server-side CST execution.
 
 ```mermaid
-C4Context
-    title System Context — Cameo Simulation Toolkit (CST)
-    Person(se, "Systems Engineer", "Executes and validates SysML behavioural models")
-    Person(ss, "Simulation Specialist", "Configures and manages advanced simulations")
-    System_Boundary(cameo, "CAMEO MBSE Toolchain") {
-        System(csm, "Cameo Systems Modeler", "Primary MBSE modelling and simulation client")
-        System(cst, "CST Plugin", "Simulation engine embedded within CSM")
-        System(wap, "Web Application Platform", "Hosts optional server-side CST execution")
-    }
-    System_Ext(twc, "Teamwork Cloud", "Shared model repository — read-only during simulation")
-    System_Ext(lic, "FlexNet Licence Server", "Floating licence validation for CST")
-    System_Ext(ad, "Active Directory", "User identity and group-based access control")
-    Rel(se, csm, "Launches and operates simulations")
-    Rel(csm, cst, "Loads CST plugin; invokes simulation")
-    Rel(cst, twc, "Reads shared models (read-only, TLS 1.2+)")
-    Rel(cst, lic, "Checks out floating licence (FLEXlm/TCP)")
-    Rel(cst, wap, "Delegates simulation (optional, HTTPS/TLS 1.2+)")
+sequenceDiagram
+    autonumber
+    actor SE as Systems Engineer
+    participant CSM as CSM Client (Windows 10/11)
+    participant WAP as Web Application Platform (Windows Server 2025)
+    participant CST_S as CST Server Service (JVM)
+    participant LIC as FlexNet Licence Server
+    participant AD as Active Directory
+    SE->>CSM: Select model; choose "Run Simulation (server-side)"
+    CSM->>WAP: HTTPS POST /simulate (TLS 1.2+, Kerberos token)
+    WAP->>AD: Validate Kerberos token; check group membership
+    alt Auth fails or insufficient role
+        AD-->>WAP: Denied
+        WAP-->>CSM: 403 Forbidden
+    end
+    AD-->>WAP: Auth OK; roles confirmed
+    WAP->>CST_S: Route simulation request
+    CST_S->>LIC: Request server-side licence checkout
+    LIC-->>CST_S: Licence granted
+    CST_S->>CST_S: Execute simulation
+    CST_S->>LIC: Return licence
+    CST_S-->>WAP: Return result reference
+    WAP-->>CSM: HTTPS 200 + result reference
+    CSM-->>SE: Display simulation results
 ```
-
----
-
-### 5.4 Quality Attributes
-
-| Attribute | Target |
-|-----------|--------|
-| **Execution determinism** | 100% reproducible results across identical inputs |
-| **JVM stability** | No simulation-induced CSM crash or memory fault |
-| **Availability (server mode)** | ≥ 99.5% during core operational hours |
-| **Least privilege** | All execution constrained to the invoking user's AD privileges |
-| **Auditability** | All simulation launches and results logged to Windows Event Log |
-
----
-
-### 5.5 Open Issues
-
-| ID | Description | Impact | Owner |
-|----|-------------|--------|-------|
-| GAP-01 | JVM version not confirmed by vendor | Sizing and compliance | TA |
-| GAP-02 | CST product version not confirmed | Compliance mapping | TA |
-| GAP-03 | WAP integration API contract not documented | Integration | PO |
-| GAP-04 | FlexNet licence pool size for server-side checkout not defined | Capacity | TA |
 
 ---
 
 ## 6. CSM — Cameo Systems Modeler
 
-### 6.1 Purpose
+> **Source:** `csm/docs/08_rbac_definition.md` | **Status:** ✅ Done
+### Role Definitions (CSM)
 
-The Phoenix Programme deploys Cameo Systems Modeler (CSM) as the primary desktop authoring tool for SysML modelling, requirements traceability, and system analysis. The approved delivery model is:
-
-- **Numecent Application Virtualization** — packages CSM as an immutable, signed, version-controlled virtual application.
-- **VMware Horizon Persistent VDI** — provides a dedicated, hardened Windows desktop in which CSM executes locally.
+| Role ID | Role Name | Description |
+|---|---|---|
+| R01 | Systems Engineer | Primary SysML modelling user |
+| R02 | Lead Architect | Senior modeller; model review and approval |
+| R03 | MBSE Tool Administrator | Manages CSM package, plugins, JVM config |
+| R04 | VDI Platform Engineer | Manages Horizon pool, OS image, profiles |
+| R05 | Cybersecurity Compliance Officer | Reviews compliance posture; approves exceptions |
 
 ---
 
-### 6.2 Deployment Model
+### Access Matrix (CSM)
+
+**VDI Access:**
+
+| Permission | R01 | R02 | R03 | R04 | R05 |
+|---|---|---|---|---|---|
+| Connect to Horizon VDI | ✅ | ✅ | ✅ | ✅ | 🔍 Audit only |
+| Local Administrator on VDI | ❌ | ❌ | ⚠️ Break-glass only | ✅ | ❌ |
+| Reset VDI pool desktop | ❌ | ❌ | ❌ | ✅ | ❌ |
+
+**CSM Application:**
+
+| Permission | R01 | R02 | R03 | R04 | R05 |
+|---|---|---|---|---|---|
+| Launch CSM | ✅ | ✅ | ✅ | ❌ | ❌ |
+| Create / edit SysML models | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Approve / baseline models | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Install / update plugins | ❌ | ❌ | ✅ | ❌ | ❌ |
+| Modify JVM configuration | ❌ | ❌ | ✅ | ❌ | ❌ |
+
+**Licence Server:**
+
+| Permission | R01 | R02 | R03 | R04 | R05 |
+|---|---|---|---|---|---|
+| Consume floating licence | ✅ | ✅ | ✅ | ❌ | ❌ |
+| View licence usage | ❌ | ❌ | ✅ | ❌ | ✅ |
+| Administer licence server | ❌ | ❌ | ✅ | ❌ | ❌ |
+
+---
+
+### AD Group Mapping (CSM)
+
+| Role | AD Group | Notes |
+|---|---|---|
+| R01 — Systems Engineer | `<AD_GROUP_SE>` | Grants Horizon pool entitlement; FlexNet licence seat |
+| R02 — Lead Architect | `<AD_GROUP_LA>` | Grants Horizon pool entitlement; FlexNet licence seat; TWC project create rights |
+| R03 — MBSE Tool Admin | `<AD_GROUP_ADMIN>` | Grants Horizon admin console access; Numecent admin access |
+| R04 — VDI Platform Engineer | `<AD_GROUP_VDI>` | Grants Horizon infrastructure admin rights |
+| R05 — Compliance Officer | `<AD_GROUP_COMPLIANCE>` | Read-only audit access |
+
+---
+
+### CSM Deployment Model
+
+The diagram below shows the runtime topology of the CSM deployment. All user identity flows through Active Directory (Kerberos); the licence server connection and optional TWC connection are the only outbound network paths allowed from the VDI.
 
 ```mermaid
 graph TD
@@ -337,32 +398,91 @@ graph TD
 
 ---
 
-### 6.3 Component Summary
+### CSM Logical Component — External Auth Connections
 
-| Component | Role | Location |
-|---|---|---|
-| VMware Horizon Connection Server | Broker — routes users to VDI desktops | Infrastructure |
-| VMware Horizon VDI Desktop (Persistent) | User's dedicated compute environment | VDI segment |
-| Numecent Cloudpaging Server | Hosts and streams CSM application package | Infrastructure |
-| CSM Application (Numecent Package) | SysML authoring — executes locally in VDI | Within VDI OS |
-| Embedded JVM | Java runtime — vendor-packaged inside CSM package | Within VDI OS |
-| FlexNet / DSLS Licence Server | Issues and tracks floating licences | Infrastructure |
-| Teamwork Cloud (TWC) | Central MBSE model repository (optional) | TWC segment |
-| Active Directory | Identity and authentication authority | Identity zone |
+The diagram below shows the logical components of the CSM deployment and how the VDI desktop connects to external services. Active Directory is the identity authority for all authentication; there is no direct internet access.
+
+```mermaid
+graph LR
+    subgraph VDI["VMware Horizon Persistent VDI Desktop"]
+        subgraph Numecent["Numecent Runtime Environment"]
+            CSM["Cameo Systems Modeler"]
+            JVM["Embedded JVM (vendor-packaged)"]
+            P1["Plugin: SysML"]
+            P2["Plugin: Requirements Modeler"]
+            P3["Plugin: DataHub (if approved)"]
+            CSM --> JVM
+            CSM --> P1
+            CSM --> P2
+            CSM --> P3
+        end
+        OS["Windows 10/11 Enterprise (STIG/CIS Hardened)"]
+    end
+    subgraph External["External Services (Allow-Listed)"]
+        LS["FlexNet / DSLS License Server"]
+        TWC["Teamwork Cloud (Optional)"]
+        AD["Active Directory"]
+    end
+    VDI -->|"TCP — Licence Checkout"| LS
+    VDI -->|"HTTPS — Model Sync (if enabled)"| TWC
+    VDI -->|"Kerberos / LDAP"| AD
+```
 
 ---
 
-### 6.4 Key Design Decisions
+## 7. Cross-Component RBAC Summary
 
-| Decision | Rationale |
-|---|---|
-| Persistent VDI (not non-persistent) | JVM cache behaviour and plugin persistence require a stable, dedicated desktop |
-| Numecent over SCCM | Immutable versioned packages, rapid rollback, delta streaming |
-| Local VDI execution (not RDS) | GUI latency-sensitive; dedicated CPU/RAM; vendor-supported |
-| Vendor-embedded JVM | Validated, tested JVM version; avoids version drift |
-| No internet access | Defence enclave policy; all connectivity via explicit allow-list |
-| AD-only authentication | No embedded credentials; all identity flows through Kerberos/AD |
+### AD Group Index (All Components)
+
+| AD Group | Component | Role | Privilege Level |
+|---|---|---|---|
+| `SG-WAP-Admins` | WAP | Platform Administrator (WAP-R01) | Highest |
+| `SG-WAP-CollabUsers` | WAP | Collaborator User (WAP-R02) | Standard |
+| `SG-WAP-CollabViewers` | WAP | Collaborator Viewer (WAP-R03) | Read-only |
+| `SG-WAP-DocExport` | WAP | Document Export User (WAP-R04) | Functional |
+| `SG-WAP-SimUsers` | WAP | Simulation User (WAP-R05) | Functional |
+| `SG-WAP-API` | WAP | API Consumer (WAP-R06) | Service |
+| `<AD_GRP_TWC_ADMIN>` | TWC | TWC-Admin | Full admin |
+| `<AD_GRP_TWC_PROJADMIN>` | TWC | TWC-ProjectAdmin | Project admin |
+| `<AD_GRP_TWC_MODELLER>` | TWC | TWC-Modeller | Read/write |
+| `<AD_GRP_TWC_REVIEWER>` | TWC | TWC-Reviewer | Read-only |
+| `<AD_GRP_TWC_AUDIT>` | TWC | TWC-AuditViewer | Audit only |
+| `<AD_GROUP_FLEXNET_ADMIN>` | FlexNet | FlexNet Administrator (FNA) | Full lmadmin |
+| `<AD_GROUP_FLEXNET_OPERATOR>` | FlexNet | FlexNet Operator (FNO) | Read-only lmadmin |
+| `<AD_GROUP_FLEXNET_AUDITOR>` | FlexNet | FlexNet Auditor (FNT) | Audit logs only |
+| `<AD_GROUP_OS_ADMIN>` | FlexNet | OS Administrator (OSA) | OS sudo |
+| `<AD_GROUP_SE>` | CSM | Systems Engineer (R01) | Model authoring |
+| `<AD_GROUP_LA>` | CSM | Lead Architect (R02) | Model approval; TWC project create |
+| `<AD_GROUP_ADMIN>` | CSM | MBSE Tool Administrator (R03) | Tool admin |
+| `<AD_GROUP_VDI>` | CSM | VDI Platform Engineer (R04) | VDI infra admin |
+| `<AD_GROUP_COMPLIANCE>` | CSM | Compliance Officer (R05) | Audit read-only |
 
 ---
 
-*Generated: 2026-04-08 | Classification: OFFICIAL — SENSITIVE | Author: Iain Reid
+### Persona-to-Role Mapping (Cross-Component)
+
+| Persona | WAP Role | TWC Role | FlexNet | CST Role | CSM Role |
+|---|---|---|---|---|---|
+| Systems Engineer | WAP-R02 Collab User | TWC-Modeller | Seat consumer (via `<AD_GROUP_SE>`) | `CST_USER` | R01 Systems Engineer |
+| Lead Architect / Senior Modeller | WAP-R02 Collab User | TWC-ProjectAdmin | Seat consumer (via `<AD_GROUP_LA>`) | `CST_USER` | R02 Lead Architect |
+| MBSE Tool Administrator | WAP-R01 Platform Admin | TWC-Admin | FNA FlexNet Admin (via `<AD_GROUP_ADMIN>`) | `CST_ADMIN` | R03 MBSE Tool Admin |
+| Simulation Specialist | WAP-R05 Simulation User | TWC-Modeller | Seat consumer | `CST_SIMULATION_SPECIALIST` | R01 Systems Engineer |
+| VDI Platform Engineer | — | — | OSA OS Admin (via `<AD_GROUP_VDI>`) | `CST_PLATFORM_OPS` | R04 VDI Platform Engineer |
+| Cybersecurity Compliance Officer | WAP-R03 Viewer | TWC-AuditViewer | FNT Auditor | `CST_READONLY` | R05 Compliance Officer |
+| Reviewer / Auditor | WAP-R03 Viewer | TWC-Reviewer | — | `CST_READONLY` | — |
+| API / Service Account | WAP-R06 API Consumer | — | — | — | — |
+| FlexNet Operator | — | — | FNO FlexNet Operator | — | — |
+
+---
+
+### Service Accounts (All Components)
+
+| Account | Component | Purpose | Rotation |
+|---|---|---|---|
+| `svc-wap-twc` | WAP | WAP → TWC REST API integration | Quarterly |
+| `svc-wap-bind` | WAP | LDAP bind account for AD authentication | Quarterly |
+| `svc_flexnet` | FlexNet | Runs `flexnet.service`; non-interactive | N/A (local system account) |
+
+---
+
+*Generated: 2026-04-09 | Classification: OFFICIAL — SENSITIVE | Author: Iain Reid*
